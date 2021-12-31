@@ -19,7 +19,7 @@ class FCM(BaseModel):
         arbitrary_types_allowed = True
 
     @validate_arguments
-    def fit(self, X: Array[float]) -> None:
+    def fit(self, X: Array[float], Contexts=None) -> None:
         """Train the fuzzy-c-means model..
 
         Parameters
@@ -35,13 +35,13 @@ class FCM(BaseModel):
         for _ in range(self.max_iter):
             u_old = self.u.copy()
             self._centers = FCM._next_centers(X, self.u, self.m)
-            self.u = self.soft_predict(X)
+            self.u = self.soft_predict(X, Contexts)
             # Stopping rule
             if np.linalg.norm(self.u - u_old) < self.error:
                 break
         self.trained = True
 
-    def soft_predict(self, X: Array[float]) -> Array[float]:
+    def soft_predict(self, X: Array[float], Contexts=None) -> Array[float]:
         """Soft predict of FCM 
 
         Parameters
@@ -55,11 +55,13 @@ class FCM(BaseModel):
             Fuzzy partition array, returned as an array with n_samples rows
             and n_clusters columns.
         """
+        if Contexts is not None:
+            assert X.shape[0] == Contexts.shape[0], f'{X.shape} {Contexts.shape}'
         temp = FCM._dist(X, self._centers) ** float(2 / (self.m - 1))
         denominator_ = temp.reshape(
             (X.shape[0], 1, -1)).repeat(temp.shape[-1], axis=1)
         denominator_ = temp[:, :, np.newaxis] / denominator_
-        return 1 / denominator_.sum(2)
+        return Contexts / denominator_.sum(2)
 
     @validate_arguments
     def predict(self, X: Array[float]):
